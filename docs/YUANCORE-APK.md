@@ -9,7 +9,30 @@
 
 ## 0. 已验证的构建（2026-11-05）
 
-本流水线已**真机云端跑通**，不是纸面方案：
+本流水线已**真机云端跑通**，不是纸面方案。
+
+### 当前交付：`9422efda`（默认开启版）
+
+| 项 | 值 |
+| --- | --- |
+| Run | `https://github.com/funnyzcy/KernelSU-YuanCore-Compose/actions/runs/41991954209` |
+| Commit | `9422efda` |
+| 结果 | 6 个 job 全 success |
+| 产物 | `KernelSU-YuanCore-Manager-9422efda.apk`，14,055,070 字节 |
+| APK SHA-256 | `897a0327f83b06c7c1ea7353b5b50dfc2d5414b2ee8bdd4533bb45c47a9f40ce` |
+| 包名 / 版本 | `me.weishu.kernelsu` / versionCode 32725, versionName `9422efda` |
+| 证书 SHA-256 | `b6d94bfb399562892a0d681e9d567a9768a98c42cd0568807fd63142db488966` |
+| 内核参数 | `KSU_EXPECTED_SIZE=0x0337` · `KSU_EXPECTED_HASH=b6d94bfb…488966` · `KSU_PACKAGE_NAME=me.weishu.kernelsu` |
+
+**这次修的是「装上去看着和官方一样」**：主题层原本默认 OFF（为保证关闭时与上游逐字节一致），
+且 `MainActivityViewModel.observedKeys` 漏了 `yuancore_theme`，导致手动打开开关也不会触发
+主题重组，必须杀进程重启。现改为默认 ON（repository / AppSettings / UI state 三处），并把该键
+加入 `observedKeys`；开关仍在，关闭即回到官方外观且即时生效。校验器新增对应断言，
+`yuancore_compose_verify.py` 125/125 PASS。
+
+> 本次 CI 重新生成了密钥，**上一版 `b7d0d718` 的签名参数全部作废**，两版不能覆盖安装。
+
+### 第一次构建（历史记录，已被取代）
 
 | 项 | 值 |
 | --- | --- |
