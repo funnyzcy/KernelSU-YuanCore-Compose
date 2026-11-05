@@ -9,6 +9,8 @@ interface SettingsRepository {
     var keyColor: Int
     var colorStyle: String
     var colorSpec: String
+    /** Optional YuanCore visual theme. Off by default. */
+    var yuanCoreEnabled: Boolean
     var enablePredictiveBack: Boolean
     var enableSwipeDismiss: Boolean
     var pagerInterceptionMode: Int

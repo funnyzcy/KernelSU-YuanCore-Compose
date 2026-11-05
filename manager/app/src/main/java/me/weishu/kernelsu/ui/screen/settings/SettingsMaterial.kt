@@ -134,6 +134,15 @@ fun SettingPagerMaterial(
                         )
                     }
                     add {
+                        SegmentedSwitchItem(
+                            icon = Icons.Filled.Palette,
+                            title = stringResource(id = R.string.yuancore_theme),
+                            summary = stringResource(id = R.string.yuancore_theme_summary),
+                            checked = uiState.yuanCoreEnabled,
+                            onCheckedChange = actions.onSetYuanCoreEnabled
+                        )
+                    }
+                    add {
                         SegmentedListItem(
                             onClick = actions.onOpenTheme,
                             headlineContent = { Text(stringResource(id = R.string.settings_theme)) },

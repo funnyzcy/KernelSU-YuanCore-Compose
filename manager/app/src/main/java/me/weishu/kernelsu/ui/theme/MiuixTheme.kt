@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowInsetsControllerCompat
 import com.materialkolor.dynamiccolor.ColorSpec
 import me.weishu.kernelsu.ui.webui.MonetColorsProvider
+import me.weishu.kernelsu.ui.theme.yuancore.YuanCorePalette
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -43,6 +44,7 @@ fun MiuixKernelSUTheme(
     }
 
     val resolvedKeyColor: Color? = when {
+        appSettings.yuanCoreEnabled -> YuanCorePalette.Seed
         appSettings.keyColor != 0 -> Color(appSettings.keyColor)
         appSettings.colorMode.isMonet ->
             if (darkTheme) dynamicDarkColorScheme(context).primary

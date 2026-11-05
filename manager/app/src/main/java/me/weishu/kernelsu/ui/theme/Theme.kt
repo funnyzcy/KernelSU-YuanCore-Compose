@@ -2,7 +2,9 @@ package me.weishu.kernelsu.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.provides
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
@@ -10,6 +12,7 @@ import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.LocalUiMode
 import me.weishu.kernelsu.ui.UiMode
+import me.weishu.kernelsu.ui.theme.yuancore.LocalYuanCoreEnabled
 
 enum class ColorMode(val value: Int) {
     SYSTEM(0),
@@ -49,6 +52,7 @@ data class AppSettings(
     val keyColor: Int,
     val paletteStyle: PaletteStyle,
     val colorSpec: ColorSpec.SpecVersion,
+    val yuanCoreEnabled: Boolean = false,
 )
 
 val PaletteStyle.supportsSpec2025: Boolean
@@ -96,7 +100,10 @@ object ThemeController {
             ColorSpec.SpecVersion.SPEC_2025
         }
 
-        return AppSettings(colorMode, keyColor, paletteStyle, colorSpec)
+        return AppSettings(
+            colorMode, keyColor, paletteStyle, colorSpec,
+            yuanCoreEnabled = repo.yuanCoreEnabled,
+        )
     }
 }
 
@@ -107,16 +114,18 @@ fun KernelSUTheme(
     content: @Composable () -> Unit
 ) {
 
-    when (uiMode) {
-        UiMode.Miuix -> MiuixKernelSUTheme(
-            appSettings = appSettings,
-            content = content
-        )
+    CompositionLocalProvider(LocalYuanCoreEnabled provides appSettings.yuanCoreEnabled) {
+        when (uiMode) {
+            UiMode.Miuix -> MiuixKernelSUTheme(
+                appSettings = appSettings,
+                content = content
+            )
 
-        UiMode.Material -> MaterialKernelSUTheme(
-            appSettings = appSettings,
-            content = content
-        )
+            UiMode.Material -> MaterialKernelSUTheme(
+                appSettings = appSettings,
+                content = content
+            )
+        }
     }
 }
 

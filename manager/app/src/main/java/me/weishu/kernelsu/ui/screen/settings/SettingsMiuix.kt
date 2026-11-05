@@ -177,6 +177,20 @@ fun SettingPagerMiuix(
                             },
                             onClick = actions.onOpenTheme
                         )
+                        SwitchPreference(
+                            title = stringResource(id = R.string.yuancore_theme),
+                            summary = stringResource(id = R.string.yuancore_theme_summary),
+                            startAction = {
+                                Icon(
+                                    Icons.Rounded.Palette,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    contentDescription = stringResource(id = R.string.yuancore_theme),
+                                    tint = colorScheme.onBackground
+                                )
+                            },
+                            checked = uiState.yuanCoreEnabled,
+                            onCheckedChange = actions.onSetYuanCoreEnabled
+                        )
                     }
 
                     KsuIsValid {

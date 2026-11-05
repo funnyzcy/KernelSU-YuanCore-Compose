@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.sp
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.theme.yuancore.LocalYuanCoreEnabled
+import me.weishu.kernelsu.ui.theme.yuancore.YuanCoreHeroCard
 import me.weishu.kernelsu.ui.component.WarningLevel
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.miuix.WarningCard
@@ -162,6 +164,25 @@ fun HomePagerMiuix(
                         }
                         if (state.showRootWarning) {
                             WarningCard(stringResource(id = R.string.grant_root_failed))
+                        }
+                        if (LocalYuanCoreEnabled.current) {
+                            YuanCoreHeroCard(
+                                title = when {
+                                    state.ksuVersion != null -> stringResource(R.string.home_working)
+                                    state.kernelVersion.isGKI() -> stringResource(R.string.home_not_installed)
+                                    else -> stringResource(R.string.home_unsupported)
+                                },
+                                subtitle = if (state.ksuVersion != null) {
+                                    "KSU ${state.ksuVersion} / UAPI ${state.kernelUAPIVersion}"
+                                } else {
+                                    stringResource(R.string.home_click_to_install)
+                                },
+                                active = state.ksuVersion != null,
+                                badge = stringResource(
+                                    if (state.isManager) R.string.yuancore_trusted else R.string.yuancore_untrusted
+                                ),
+                                onClick = actions.onInstallClick,
+                            )
                         }
                         StatusCard(
                             state = state,
