@@ -56,7 +56,7 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10950 \
             -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
             -dname "CN=KernelSU YuanCore UNOFFICIAL, O=YuanCore, C=CN" \
-            -storetype PKCS12 -keystore yuancore.jks
+            -storetype JKS -keystore yuancore.jks
 
           B64=$(base64 -w 0 yuancore.jks)
           echo "::add-mask::$B64"
