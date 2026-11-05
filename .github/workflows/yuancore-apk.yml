@@ -1,0 +1,278 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# YuanCore: build a real, installable KernelSU manager APK on the `yuancore`
+# branch. Upstream's build-manager.yml requires repository secrets (KEYSTORE,
+# KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) for non-main/dev branches, which
+# a personal fork normally does not have. This workflow generates an ephemeral
+# signing key inside CI, feeds its certificate size/hash into the LKM build,
+# and uses the *same* key for both the Gradle APK and the repack_apk.py re-sign.
+#
+# The produced APK is UNOFFICIAL and self-signed. A stock official KernelSU
+# kernel will NOT authorise it: the kernel's throne_tracker/apk_sign checks the
+# manager package name and the v2 signing certificate. To use it as a working
+# manager you must build a kernel with the expected_size / expected_hash printed
+# by the `signing-key` job (see docs/YUANCORE-APK.md).
+
+name: YuanCore Manager APK
+
+on:
+  push:
+    branches: [ "yuancore" ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Also attach the APK to a GitHub Release"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Ephemeral signing key + the values the kernel needs to trust this APK.
+  # ---------------------------------------------------------------------------
+  signing-key:
+    runs-on: ubuntu-latest
+    outputs:
+      keystore: ${{ steps.gen.outputs.keystore }}
+      store_password: ${{ steps.gen.outputs.store_password }}
+      key_password: ${{ steps.gen.outputs.key_password }}
+      expected_size: ${{ steps.gen.outputs.expected_size }}
+      expected_hash: ${{ steps.gen.outputs.expected_hash }}
+    steps:
+      - name: Generate build keystore
+        id: gen
+        run: |
+          set -euo pipefail
+          STORE_PASS=$(openssl rand -hex 24)
+          KEY_PASS=$(openssl rand -hex 24)
+          echo "::add-mask::$STORE_PASS"
+          echo "::add-mask::$KEY_PASS"
+
+          keytool -genkeypair \
+            -alias yuancore \
+            -keyalg RSA -keysize 2048 -validity 10950 \
+            -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+            -dname "CN=KernelSU YuanCore UNOFFICIAL, O=YuanCore, C=CN" \
+            -storetype PKCS12 -keystore yuancore.jks
+
+          B64=$(base64 -w 0 yuancore.jks)
+          echo "::add-mask::$B64"
+          {
+            echo "keystore=$B64"
+            echo "store_password=$STORE_PASS"
+            echo "key_password=$KEY_PASS"
+          } >> "$GITHUB_OUTPUT"
+
+          # DER certificate -> KSU_EXPECTED_SIZE (hex) + KSU_EXPECTED_HASH (sha256)
+          keytool -exportcert -alias yuancore -keystore yuancore.jks \
+            -storepass "$STORE_PASS" -file yuancore-cert.der
+          SIZE_DEC=$(stat -c%s yuancore-cert.der)
+          SIZE_HEX=$(printf '0x%04x' "$SIZE_DEC")
+          HASH=$(sha256sum yuancore-cert.der | awk '{print $1}')
+          {
+            echo "expected_size=$SIZE_HEX"
+            echo "expected_hash=$HASH"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "### YuanCore signing certificate" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`KSU_EXPECTED_SIZE=$SIZE_HEX\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`KSU_EXPECTED_HASH=$HASH\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Use these two values when compiling a kernel that should trust this APK." >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # 2/3. Native payloads that get embedded into the manager by repack_apk.py.
+  # ---------------------------------------------------------------------------
+  build-lkm:
+    needs: signing-key
+    uses: ./.github/workflows/build-lkm.yml
+    with:
+      expected_size: ${{ needs.signing-key.outputs.expected_size }}
+      expected_hash: ${{ needs.signing-key.outputs.expected_hash }}
+
+  build-ksuinit:
+    uses: ./.github/workflows/ksuinit.yml
+
+  build-ksud:
+    needs: [build-lkm, build-ksuinit]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-linux-android
+          - target: x86_64-linux-android
+          - target: riscv64-linux-android
+    uses: ./.github/workflows/ksud.yml
+    with:
+      target: ${{ matrix.target }}
+      pack_lkm: true
+      pack_ksuinit: true
+
+  # ---------------------------------------------------------------------------
+  # 4. Gradle release APK (Compose UI, including the YuanCore theme layer).
+  # ---------------------------------------------------------------------------
+  build-manager:
+    needs: signing-key
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./manager
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Write signing config
+        env:
+          KEYSTORE_B64: ${{ needs.signing-key.outputs.keystore }}
+          STORE_PASS: ${{ needs.signing-key.outputs.store_password }}
+          KEY_PASS: ${{ needs.signing-key.outputs.key_password }}
+        run: |
+          set -euo pipefail
+          echo "$KEYSTORE_B64" | base64 -d > yuancore.jks
+          {
+            echo "KEYSTORE_FILE=yuancore.jks"
+            echo "KEY_ALIAS=yuancore"
+            echo "KEYSTORE_PASSWORD=$STORE_PASS"
+            echo "KEY_PASSWORD=$KEY_PASS"
+          } >> gradle.properties
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble release
+        run: ./gradlew clean assembleRelease
+
+      - name: Upload unsigned-pipeline APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: manager-gradle
+          path: manager/app/build/outputs/apk/release/*.apk
+
+  # ---------------------------------------------------------------------------
+  # 5. Inject ksud binaries and re-sign with the very same key.
+  # ---------------------------------------------------------------------------
+  repack-manager:
+    needs: [signing-key, build-manager, build-ksud]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Place manager APK and ksud binaries
+        run: |
+          set -euo pipefail
+          mkdir -p manager/app/build/outputs/apk/release
+          APK=$(find artifacts/manager-gradle -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          cp -f "$APK" manager/app/build/outputs/apk/release/
+
+          for pair in "aarch64-linux-android:ksud-aarch64-linux-android" \
+                      "x86_64-linux-android:ksud-x86_64-linux-android" \
+                      "riscv64-linux-android:ksud-riscv64-linux-android"; do
+            TRIPLE=${pair%%:*}
+            ARTIFACT=${pair##*:}
+            BIN=$(find "artifacts/$ARTIFACT" -type f -name ksud | head -n 1)
+            test -n "$BIN"
+            mkdir -p "target/$TRIPLE/release"
+            cp -f "$BIN" "target/$TRIPLE/release/ksud"
+          done
+
+      - name: Decode signing key
+        id: key
+        env:
+          KEYSTORE_B64: ${{ needs.signing-key.outputs.keystore }}
+        run: |
+          set -euo pipefail
+          echo "$KEYSTORE_B64" | base64 -d > yuancore.jks
+          echo "keystore=yuancore.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Repack and re-sign
+        env:
+          STORE_PASS: ${{ needs.signing-key.outputs.store_password }}
+          KEY_PASS: ${{ needs.signing-key.outputs.key_password }}
+        run: |
+          set -euo pipefail
+          python3 repack_apk.py repack \
+            -b release -t release \
+            -a arm64-v8a -a x86_64 -a riscv64 \
+            -K "${{ steps.key.outputs.keystore }}" \
+            -A yuancore \
+            -P "$STORE_PASS" \
+            -S "$KEY_PASS" \
+            -n KernelSU-YuanCore-Manager \
+            --strip
+
+      - name: Name the deliverable
+        id: name
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse --short=8 HEAD)
+          mkdir -p out
+          APK=dist/KernelSU-YuanCore-Manager.apk
+          test -f "$APK"
+          cp -f "$APK" "out/KernelSU-YuanCore-Manager-${SHA}.apk"
+          echo "apk=out/KernelSU-YuanCore-Manager-${SHA}.apk" >> "$GITHUB_OUTPUT"
+          echo "tag=yuancore-${SHA}" >> "$GITHUB_OUTPUT"
+          ls -lh out/
+
+      - name: Verify signature
+        env:
+          APK: ${{ steps.name.outputs.apk }}
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" \
+            -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -z "$APKSIGNER" ]; then APKSIGNER=$(command -v apksigner || true); fi
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --verbose --print-certs "$APK" | tee signature.txt
+            echo "### APK signature" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            grep -E 'Signer #1 certificate (DN|SHA-256)|Verified using' signature.txt >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "apksigner unavailable on runner; repack_apk.py already verified signing." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload manager APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: KernelSU-YuanCore-Manager
+          path: ${{ steps.name.outputs.apk }}
+          if-no-files-found: error
+
+      - name: Publish release
+        if: ${{ inputs.create_release }}
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.name.outputs.tag }}
+          name: "KernelSU YuanCore (unofficial) ${{ steps.name.outputs.tag }}"
+          body: |
+            UNOFFICIAL, self-signed build of the KernelSU manager with the
+            optional YuanCore Compose theme layer.
+
+            - Built by `.github/workflows/yuancore-apk.yml`.
+            - The signing key is generated inside CI and discarded afterwards.
+            - A stock official kernel will NOT grant root to this APK. See
+              `docs/YUANCORE-APK.md` for the matching kernel build flags.
+          files: ${{ steps.name.outputs.apk }}

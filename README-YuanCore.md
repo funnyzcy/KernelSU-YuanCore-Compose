@@ -37,7 +37,13 @@ Material 注入种子/表面/形状/字阶，Miuix 只注入种子（其表面�
 ## 2. 构建
 
 需要 JDK 21、Gradle 9.7.1 / AGP 9.4.1、compileSdk 37、NDK 29、Rust 工具链。
-本分支按官方流程构建，无额外步骤：
+本分支按官方流程构建，无额外步骤。
+
+**云端一键出 APK**：`.github/workflows/yuancore-apk.yml` 在 `yuancore` 分支 push 或手动
+触发时，用 CI 临时生成的密钥完成 Gradle 构建 + ksud 注入 + 重签，产出
+`KernelSU-YuanCore-Manager-<sha>.apk` artifact（无需配置任何 secret）。
+完整步骤、内核信任链参数与分发边界见 [docs/YUANCORE-APK.md](docs/YUANCORE-APK.md)。
+本机（JDK 17 / SDK 35）不具备完整工具链，无法本地编译管理器。
 
 ```bash
 ./gradlew :app:assembleRelease        # 在 manager/ 目录下
