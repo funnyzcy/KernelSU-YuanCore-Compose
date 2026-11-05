@@ -7,6 +7,37 @@
 - 构建流水线：`.github/workflows/yuancore-apk.yml`
 - 打包脚本（上游自带）：`repack_apk.py`
 
+## 0. 已验证的构建（2026-11-05）
+
+本流水线已**真机云端跑通**，不是纸面方案：
+
+| 项 | 值 |
+| --- | --- |
+| Run | `https://github.com/funnyzcy/KernelSU-YuanCore-Compose/actions/runs/41988591559` |
+| Commit | `b7d0d718` |
+| 结果 | 6 个 job 全 success（含 8 个 KMI 的 LKM、三架构 ksud、Gradle release、repack） |
+| 产物 | `KernelSU-YuanCore-Manager-b7d0d718.apk`，14,055,070 字节 |
+| APK SHA-256 | `b839bd2bfd0c4bc93d1228db3f326cd17bc8390d810092d32eab4ba8718f5dca` |
+| 包名 / 版本 | `me.weishu.kernelsu` / versionCode 32723, versionName `b7d0d718` |
+| 签名 DN | `CN=KernelSU YuanCore UNOFFICIAL, O=YuanCore, C=CN` |
+| 证书 SHA-256 | `508afe5b9b2170815ebf7b8ae064566a0fa5ace5c59a541adbc6b898eceec115` |
+| 内核参数 | `KSU_EXPECTED_SIZE=0x0337` · `KSU_EXPECTED_HASH=508afe5b…ecec115` · `KSU_PACKAGE_NAME=me.weishu.kernelsu` |
+
+产物内含 `lib/{arm64-v8a,x86_64,riscv64}/libksud.so` 与 `libkernelsu.so`；
+dex 中可检索到 `yuanCoreEnabled`、`yuancore_theme`、`YuanCoreSpin`、`YuanCoreBreath`
+（R8 会混淆类名，因此看不到 `YuanCoreHeroCard` 原名属正常）。
+
+**真实编译暴露并已修复的三个问题**（源码级校验发现不了，必须靠 CI）：
+
+1. `ui/theme/Theme.kt` 多写了 `import androidx.compose.runtime.provides` —
+   `provides` 是 `ProvidableCompositionLocal` 的成员中缀函数，不是顶层扩展；
+2. PKCS12 keystore 被 AGP 的 apksign 插件按 JKS 读，报
+   `Tag number over 30 is not supported`；
+3. 用 `::add-mask::` 处理过的密钥经 job outputs 传到下游不可靠 —
+   最终改为**用同一次 run 内的私有 artifact 传 keystore + 密码**，
+   Gradle 只产出 unsigned release APK，由 `repack_apk.py` 统一签名。
+   这也顺带消除了第 2 个问题的触发条件。
+
 ## 1. 为什么不在本机编译
 
 本地工作区当前只有：
