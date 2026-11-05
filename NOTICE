@@ -1,0 +1,61 @@
+YuanCore Compose Theme for KernelSU
+===================================
+
+UNOFFICIAL DOWNSTREAM FORK. This repository is not affiliated with, endorsed
+by, maintained by, or signed by the KernelSU project or its maintainers.
+"KernelSU" and the KernelSU marks belong to their respective owners and are
+used here only to identify the upstream project this work derives from.
+
+Upstream:  https://github.com/tiann/KernelSU
+Baseline:  commit 28db74f6f4692e97006ce9ebd8b19b9cc614b5b7 (main, v3.3.x line)
+Fork date: 2026-11-05
+Branch:    yuancore
+
+
+License structure
+-----------------
+Two distinct licenses apply. Both LICENSE files are preserved verbatim from
+upstream and MUST NOT be merged, replaced, or removed when redistributing:
+
+  LICENSE          GNU General Public License v3
+                   Manager app, ksud, userspace, scripts, JS, docs.
+
+  kernel/LICENSE   GNU General Public License v2
+                   Kernel-side code (sources carry SPDX GPL-2.0-only tags and
+                   MODULE_LICENSE("GPL")), required for Linux kernel linkage.
+
+GPLv2-only and GPLv3 are not compatible with each other. They coexist here as
+separate, independently licensed components exactly as upstream ships them.
+Applying one license text to the whole tree would be incorrect.
+
+
+Modifications made in this fork
+-------------------------------
+All changes are confined to the Manager app's presentation layer and to
+tooling. The theme is OFF by default; with the switch off, upstream appearance
+and behaviour are unchanged.
+
+  * Added an optional, self-contained Compose theme layer under
+    manager/app/src/main/java/me/weishu/kernelsu/ui/theme/yuancore/
+    (design tokens, colour-scheme overlay, composition-local switch,
+    animated concentric-core orb, and home hero card).
+  * Wired a persisted setting through repository / ViewModel / both settings
+    screens, and injected the palette into the Material and Miuix shells.
+  * Added English default strings plus zh-rCN translations.
+  * Added tools/yuancore_compose_verify.py and publication-hygiene tooling.
+  * Added this NOTICE and README-YuanCore.md.
+
+Explicitly NOT changed:
+    applicationId / package name, signing configuration, launcher and splash
+    assets, kernel/Kbuild variables, Natives.kt, JNI (jni.cc), ksud,
+    supercall, allowlist, superuser logic, module installation, kernel/,
+    apk_sign.c and throne_tracker.c. No root authorisation behaviour differs
+    from upstream.
+
+All original copyright notices, licence headers and both LICENSE files from
+upstream are preserved. The YuanCore additions are offered under
+GPL-3.0-or-later, consistent with the Manager module; the combined work
+remains governed by the respective upstream licences described above.
+
+See README-YuanCore.md for build instructions, redistribution obligations,
+and the self-signed-manager trust boundary.

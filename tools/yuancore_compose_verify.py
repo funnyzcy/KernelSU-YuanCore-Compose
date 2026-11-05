@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 YuanCore contributors
 """Static verification for the YuanCore Compose theme branch.
 
 Run from anywhere:  python tools/yuancore_compose_verify.py
@@ -86,7 +88,8 @@ for f in files:
     check(p.is_file(), "theme layer: " + f)
     if p.is_file():
         src = text(p)
-        check(src.startswith("package me.weishu.kernelsu.ui.theme.yuancore"),
+        check(re.search(r"^package me\.weishu\.kernelsu\.ui\.theme\.yuancore\s*$",
+                        src, re.M) is not None,
               "  package declaration: " + f)
         check(balanced(src), "  delimiters balanced: " + f)
 
@@ -221,6 +224,30 @@ for p in list(M.rglob("*.kt")) + list(RES.rglob("*.xml")):
 check(refs <= set(keys), "every yuancore string reference resolves",
       ", ".join(sorted(refs - set(keys))) or str(len(refs)) + " refs")
 
+# --- open-source readiness -------------------------------------------------
+check("Version 3" in text(ROOT / "LICENSE"), "root LICENSE preserved as GPLv3")
+check("Version 2" in text(ROOT / "kernel" / "LICENSE"),
+      "kernel/LICENSE preserved as GPLv2")
+notice = text(ROOT / "NOTICE")
+check("UNOFFICIAL" in notice, "NOTICE declares unofficial fork")
+check(BASE[:12] in notice, "NOTICE pins upstream baseline")
+check("kernel/LICENSE" in notice, "NOTICE explains dual-licence layout")
+readme = text(ROOT / "README-YuanCore.md")
+check("UNOFFICIAL" in readme, "README declares unofficial fork")
+check("GPLv3" in readme and "GPLv2" in readme, "README explains both licences")
+check("Corresponding Source" in readme, "README states GPL source obligation")
+gitignore = text(ROOT / ".gitignore")
+for pattern in ["*.keystore", "*.jks", "*.env", "sign.properties", "*.apk"]:
+    check(pattern in gitignore, ".gitignore excludes " + pattern)
+for f in sorted(YC.glob("*.kt")):
+    first = text(f).splitlines()[0]
+    check(first.startswith("// SPDX-License-Identifier: GPL-3.0-or-later"),
+          "SPDX header: " + f.name)
+check((ROOT / "tools/yuancore_prepublish_check.py").is_file(),
+      "prepublication hygiene check present")
+check((ROOT / "tools/yuancore_publish.sh").is_file(),
+      "publish helper present")
+
 # --- hard boundaries -------------------------------------------------------
 auth_markers = ("Natives", "jni", "ksud", "supercall", "allowlist",
                 "SuperUser", "kernel/", "apk_sign", "throne_tracker")
@@ -235,9 +262,12 @@ check("com.hunyuan" not in identity, "no custom package name")
 
 all_changed = git("diff", "--name-only", BASE).splitlines()
 untracked = git("ls-files", "--others", "--exclude-standard").splitlines()
+allowed_docs = {"NOTICE", "README-YuanCore.md", ".gitignore"}
 outside = [p for p in all_changed + untracked
-           if not (p.startswith("manager/app/src/main/") or p.startswith("tools/"))]
-check(not outside, "changes confined to app sources and tools",
+           if not (p.startswith("manager/app/src/main/")
+                   or p.startswith("tools/")
+                   or p in allowed_docs)]
+check(not outside, "changes confined to app sources, tools and OSS docs",
       ", ".join(outside) or "0 files")
 
 print("-" * 78)

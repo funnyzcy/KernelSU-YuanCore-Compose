@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 YuanCore contributors
+// Optional theme layer for KernelSU; see NOTICE at the repository root.
+
 package me.weishu.kernelsu.ui.theme.yuancore
 
 import androidx.compose.material3.Typography
