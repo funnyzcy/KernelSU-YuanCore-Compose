@@ -49,6 +49,7 @@ class SettingsViewModel(
             val enableWebDebugging = repo.enableWebDebugging
             val colorStyle = repo.colorStyle
             val colorSpec = repo.colorSpec
+            val yuanCoreEnabled = repo.yuanCoreEnabled
             val isLkmMode = repo.isLkmMode()
 
             // Async loading for natives/features
@@ -112,6 +113,7 @@ class SettingsViewModel(
                     enableWebDebugging = enableWebDebugging,
                     colorStyle = colorStyle,
                     colorSpec = colorSpec,
+                    yuanCoreEnabled = yuanCoreEnabled,
                     suCompatStatus = suCompatStatus,
                     suCompatMode = suCompatMode,
                     isSuEnabled = isSuEnabled,
@@ -232,6 +234,11 @@ class SettingsViewModel(
     fun setPagerInterceptionMode(mode: Int) {
         repo.pagerInterceptionMode = mode
         _uiState.update { it.copy(pagerInterceptionMode = mode.coerceIn(0, 2)) }
+    }
+
+    fun setYuanCoreEnabled(enabled: Boolean) {
+        repo.yuanCoreEnabled = enabled
+        _uiState.update { it.copy(yuanCoreEnabled = enabled) }
     }
 
     fun setEnableBlur(enabled: Boolean) {

@@ -369,4 +369,8 @@
     <string name="script_param_below_min">不能小于 %d</string>
     <string name="script_param_above_max">不能大于 %d</string>
     <string name="script_param_invalid">无效的值</string>
+    <string name="yuancore_theme">元核主题</string>
+    <string name="yuancore_theme_summary">靛紫流光表面、同心元核状态环与 28dp 大圆角</string>
+    <string name="yuancore_trusted">内核已授信</string>
+    <string name="yuancore_untrusted">等待内核授信</string>
 </resources>

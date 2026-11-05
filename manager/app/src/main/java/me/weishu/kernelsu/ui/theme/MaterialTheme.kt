@@ -10,6 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowInsetsControllerCompat
 import me.weishu.kernelsu.ui.webui.MonetColorsProvider
+import me.weishu.kernelsu.ui.theme.yuancore.YuanCorePalette
+import me.weishu.kernelsu.ui.theme.yuancore.YuanCoreShapes
+import me.weishu.kernelsu.ui.theme.yuancore.yuanCore
+import me.weishu.kernelsu.ui.theme.yuancore.yuanCoreType
 
 @Composable
 fun MaterialKernelSUTheme(
@@ -22,13 +26,18 @@ fun MaterialKernelSUTheme(
     val amoledMode = appSettings.colorMode.isAmoled
     val dynamicColor = appSettings.keyColor == 0
 
+    val yuanCore = appSettings.yuanCoreEnabled
     val colorScheme = rememberKernelSUColorScheme(
-        seedColor = if (dynamicColor) Color.Unspecified else Color(appSettings.keyColor),
+        seedColor = when {
+            yuanCore -> YuanCorePalette.Seed
+            dynamicColor -> Color.Unspecified
+            else -> Color(appSettings.keyColor)
+        },
         isDark = darkTheme,
         isAmoled = amoledMode,
         paletteStyle = appSettings.paletteStyle,
         colorSpec = appSettings.colorSpec,
-    )
+    ).let { if (yuanCore) it.yuanCore(darkTheme, amoledMode) else it }
 
     LaunchedEffect(darkTheme) {
         val window = (context as? Activity)?.window ?: return@LaunchedEffect
@@ -43,7 +52,8 @@ fun MaterialKernelSUTheme(
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,
         motionScheme = MotionScheme.expressive(),
-        typography = Typography,
+        shapes = if (yuanCore) YuanCoreShapes else null,
+        typography = if (yuanCore) Typography.yuanCoreType() else Typography,
         content = {
             MonetColorsProvider.UpdateCss(colorScheme)
             content()

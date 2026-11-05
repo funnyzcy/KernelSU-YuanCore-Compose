@@ -375,4 +375,9 @@
     <string name="script_param_below_min">Must be at least %d</string>
     <string name="script_param_above_max">Must be at most %d</string>
     <string name="script_param_invalid">Invalid value</string>
+    <!-- YuanCore optional theme -->
+    <string name="yuancore_theme">YuanCore theme</string>
+    <string name="yuancore_theme_summary">Indigo-violet surfaces, concentric kernel orb and 28dp shapes</string>
+    <string name="yuancore_trusted">Kernel trusted</string>
+    <string name="yuancore_untrusted">Awaiting kernel trust</string>
 </resources>
