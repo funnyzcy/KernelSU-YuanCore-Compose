@@ -72,9 +72,15 @@ print("  YuanCore Compose theme branch verification")
 print("=" * 78)
 
 # --- provenance ------------------------------------------------------------
+OFFICIAL = "https://github.com/tiann/KernelSU.git"
 origin = git("remote", "get-url", "origin")
-check(origin == "https://github.com/tiann/KernelSU.git",
-      "origin is the official GitHub repository", origin)
+upstream = git("remote", "get-url", "upstream")
+# Provenance is guaranteed by `upstream`, not `origin`: once the fork is
+# published to a personal GitHub account, origin legitimately changes.
+check(upstream == OFFICIAL,
+      "upstream points to the official GitHub repository", upstream)
+check(origin.startswith("https://github.com/") and origin.endswith(".git"),
+      "origin is a GitHub repository (official or personal fork)", origin)
 check(git("rev-parse", "--verify", BASE).startswith("28db74f6"),
       "upstream baseline commit pinned", BASE[:12])
 check(git("rev-parse", "--abbrev-ref", "HEAD") == "yuancore",
@@ -262,12 +268,16 @@ check("com.hunyuan" not in identity, "no custom package name")
 
 all_changed = git("diff", "--name-only", BASE).splitlines()
 untracked = git("ls-files", "--others", "--exclude-standard").splitlines()
-allowed_docs = {"NOTICE", "README-YuanCore.md", ".gitignore"}
+allowed_docs = {
+    "NOTICE", "README-YuanCore.md", ".gitignore",
+    ".github/workflows/yuancore-apk.yml",   # CI only, no authorisation code
+    "docs/YUANCORE-APK.md",                 # build / distribution notes
+}
 outside = [p for p in all_changed + untracked
            if not (p.startswith("manager/app/src/main/")
                    or p.startswith("tools/")
                    or p in allowed_docs)]
-check(not outside, "changes confined to app sources, tools and OSS docs",
+check(not outside, "changes confined to app sources, tools, CI and OSS docs",
       ", ".join(outside) or "0 files")
 
 print("-" * 78)
