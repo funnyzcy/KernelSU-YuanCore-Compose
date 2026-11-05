@@ -9,3 +9,31 @@ __pycache__
 /dist
 /repack-config.json
 /userspace/ksud/.lkm_image_bootstrap.o
+
+# YuanCore: local signing material and build artifacts - NEVER commit
+# Private keys, passwords, and anything derived from a prebuilt official APK
+# must stay outside the public repository.
+*.keystore
+*.jks
+*.p12
+*.pk8
+*.pem
+*.key
+*.env
+!*.env.example
+/yuancore.env
+/yuancore.env.*
+!/yuancore.env.example
+sign.properties
+keystore.properties
+local.properties
+*.apk
+*.apks
+*.aab
+/kernel/yuancore-kernel-flags.mk
+/yuancore-*.zip
+/build/
+/manager/app/build/
+*.dex
+*.so
+dex.txt
