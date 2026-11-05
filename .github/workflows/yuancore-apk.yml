@@ -5,7 +5,8 @@
 # KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) for non-main/dev branches, which
 # a personal fork normally does not have. This workflow generates an ephemeral
 # signing key inside CI, feeds its certificate size/hash into the LKM build,
-# and uses the *same* key for both the Gradle APK and the repack_apk.py re-sign.
+# lets Gradle produce an unsigned release APK, then injects ksud and signs the
+# final APK exactly once via repack_apk.py (using that same key).
 #
 # The produced APK is UNOFFICIAL and self-signed. A stock official KernelSU
 # kernel will NOT authorise it: the kernel's throne_tracker/apk_sign checks the
@@ -36,9 +37,6 @@ jobs:
   signing-key:
     runs-on: ubuntu-latest
     outputs:
-      keystore: ${{ steps.gen.outputs.keystore }}
-      store_password: ${{ steps.gen.outputs.store_password }}
-      key_password: ${{ steps.gen.outputs.key_password }}
       expected_size: ${{ steps.gen.outputs.expected_size }}
       expected_hash: ${{ steps.gen.outputs.expected_hash }}
     steps:
@@ -58,13 +56,13 @@ jobs:
             -dname "CN=KernelSU YuanCore UNOFFICIAL, O=YuanCore, C=CN" \
             -storetype JKS -keystore yuancore.jks
 
-          B64=$(base64 -w 0 yuancore.jks)
-          echo "::add-mask::$B64"
+          # Passwords travel with the key as a private artifact inside this run.
+          # Job outputs are deliberately not used for secrets: values registered
+          # with ::add-mask:: are not reliably propagated to downstream jobs.
           {
-            echo "keystore=$B64"
-            echo "store_password=$STORE_PASS"
-            echo "key_password=$KEY_PASS"
-          } >> "$GITHUB_OUTPUT"
+            echo "STORE_PASS=$STORE_PASS"
+            echo "KEY_PASS=$KEY_PASS"
+          } > signing.env
 
           # DER certificate -> KSU_EXPECTED_SIZE (hex) + KSU_EXPECTED_HASH (sha256)
           keytool -exportcert -alias yuancore -keystore yuancore.jks \
@@ -84,6 +82,16 @@ jobs:
           echo "\`KSU_EXPECTED_HASH=$HASH\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Use these two values when compiling a kernel that should trust this APK." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload signing material
+        uses: actions/upload-artifact@v7
+        with:
+          name: yuancore-signing
+          path: |
+            yuancore.jks
+            signing.env
+          retention-days: 1
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 2/3. Native payloads that get embedded into the manager by repack_apk.py.
@@ -128,20 +136,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Write signing config
-        env:
-          KEYSTORE_B64: ${{ needs.signing-key.outputs.keystore }}
-          STORE_PASS: ${{ needs.signing-key.outputs.store_password }}
-          KEY_PASS: ${{ needs.signing-key.outputs.key_password }}
-        run: |
-          set -euo pipefail
-          echo "$KEYSTORE_B64" | base64 -d > yuancore.jks
-          {
-            echo "KEYSTORE_FILE=yuancore.jks"
-            echo "KEY_ALIAS=yuancore"
-            echo "KEYSTORE_PASSWORD=$STORE_PASS"
-            echo "KEY_PASSWORD=$KEY_PASS"
-          } >> gradle.properties
+      # No KEYSTORE_* entries in gradle.properties on purpose: assembleRelease
+      # produces an unsigned APK. repack_apk.py injects ksud and signs it once
+      # with the CI-generated key (the key the kernel flags were derived from).
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -197,25 +194,26 @@ jobs:
             cp -f "$BIN" "target/$TRIPLE/release/ksud"
           done
 
-      - name: Decode signing key
-        id: key
-        env:
-          KEYSTORE_B64: ${{ needs.signing-key.outputs.keystore }}
+      - name: Prepare signing material
         run: |
           set -euo pipefail
-          echo "$KEYSTORE_B64" | base64 -d > yuancore.jks
-          echo "keystore=yuancore.jks" >> "$GITHUB_OUTPUT"
+          test -f artifacts/yuancore-signing/yuancore.jks
+          test -f artifacts/yuancore-signing/signing.env
+          cp artifacts/yuancore-signing/yuancore.jks yuancore.jks
+          # shellcheck disable=SC1091
+          . artifacts/yuancore-signing/signing.env
+          {
+            echo "STORE_PASS=$STORE_PASS"
+            echo "KEY_PASS=$KEY_PASS"
+          } >> "$GITHUB_ENV"
 
       - name: Repack and re-sign
-        env:
-          STORE_PASS: ${{ needs.signing-key.outputs.store_password }}
-          KEY_PASS: ${{ needs.signing-key.outputs.key_password }}
         run: |
           set -euo pipefail
           python3 repack_apk.py repack \
             -b release -t release \
             -a arm64-v8a -a x86_64 -a riscv64 \
-            -K "${{ steps.key.outputs.keystore }}" \
+            -K yuancore.jks \
             -A yuancore \
             -P "$STORE_PASS" \
             -S "$KEY_PASS" \
