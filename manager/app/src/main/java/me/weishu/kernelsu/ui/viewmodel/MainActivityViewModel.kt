@@ -63,6 +63,7 @@ class MainActivityViewModel(
             "key_color",
             "color_style",
             "color_spec",
+            "yuancore_theme",
             "page_scale",
             "module_description_max_lines",
             "enable_blur",

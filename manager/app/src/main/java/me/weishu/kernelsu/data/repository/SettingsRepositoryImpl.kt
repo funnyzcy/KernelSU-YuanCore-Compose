@@ -71,7 +71,7 @@ class SettingsRepositoryImpl : SettingsRepository {
         set(value) = prefs.edit { putString("color_spec", value) }
 
     override var yuanCoreEnabled: Boolean
-        get() = prefs.getBoolean("yuancore_theme", false)
+        get() = prefs.getBoolean("yuancore_theme", true)
         set(value) = prefs.edit { putBoolean("yuancore_theme", value) }
 
     override var enablePredictiveBack: Boolean

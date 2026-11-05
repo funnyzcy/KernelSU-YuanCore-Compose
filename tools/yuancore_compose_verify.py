@@ -113,7 +113,8 @@ check("copy(" in scheme and "surfaceTint" in scheme, "surfaces applied via copy"
 check("primary =" not in scheme, "semantic primary left to the seed palette")
 
 theme = text(YC / "YuanCoreTheme.kt")
-check("staticCompositionLocalOf { false }" in theme, "theme defaults to OFF")
+check("staticCompositionLocalOf { false }" in theme,
+      "composition local fallback stays OFF (host provides the real value)")
 check("staticCompositionLocalOf { true }" in theme, "motion defaults to ON")
 check("fun Typography.yuanCoreType()" in theme, "typography extension")
 
@@ -130,7 +131,7 @@ check("ColorScheme" not in hero, "hero is shell-independent")
 
 # --- wiring ----------------------------------------------------------------
 t = text(M / "ui/theme/Theme.kt")
-check("val yuanCoreEnabled: Boolean = false" in t, "AppSettings defaults to OFF")
+check("val yuanCoreEnabled: Boolean = true" in t, "AppSettings defaults to ON")
 check("repo.yuanCoreEnabled" in t, "ThemeController reads the setting")
 check("CompositionLocalProvider(LocalYuanCoreEnabled provides" in t,
       "KernelSUTheme provides the composition local")
@@ -154,12 +155,15 @@ check(balanced(mx), "MiuixTheme.kt delimiters balanced")
 repo_i = text(M / "data/repository/SettingsRepository.kt")
 check("var yuanCoreEnabled: Boolean" in repo_i, "repository interface declares switch")
 repo = text(M / "data/repository/SettingsRepositoryImpl.kt")
-check('prefs.getBoolean("yuancore_theme", false)' in repo,
-      "switch persisted, default OFF")
+check('prefs.getBoolean("yuancore_theme", true)' in repo,
+      "switch persisted, default ON in this fork")
 check('putBoolean("yuancore_theme", value)' in repo, "switch persisted on write")
 
 state = text(M / "ui/screen/settings/SettingsUiState.kt")
-check("val yuanCoreEnabled: Boolean = false" in state, "UI state defaults OFF")
+check("val yuanCoreEnabled: Boolean = true" in state, "UI state defaults ON")
+main_vm = text(M / "ui/viewmodel/MainActivityViewModel.kt")
+check('"yuancore_theme"' in main_vm and "observedKeys" in main_vm,
+      "MainActivityViewModel observes the switch for live recomposition")
 check("val onSetYuanCoreEnabled: (Boolean) -> Unit" in state,
       "UI actions expose the setter")
 

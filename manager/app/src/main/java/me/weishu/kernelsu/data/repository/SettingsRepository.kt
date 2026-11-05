@@ -9,7 +9,7 @@ interface SettingsRepository {
     var keyColor: Int
     var colorStyle: String
     var colorSpec: String
-    /** Optional YuanCore visual theme. Off by default. */
+    /** Optional YuanCore visual theme. Enabled by default in this fork; users can opt out. */
     var yuanCoreEnabled: Boolean
     var enablePredictiveBack: Boolean
     var enableSwipeDismiss: Boolean

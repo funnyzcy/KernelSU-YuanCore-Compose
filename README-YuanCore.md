@@ -6,7 +6,7 @@
 > **无隶属、无背书、无官方签名关系**。"KernelSU" 名称与标识归原权利人所有，
 > 此处仅用于指明上游来源。完整归属声明见 [NOTICE](NOTICE)。
 
-English summary: an unofficial KernelSU fork adding an **optional, default-OFF**
+English summary: an unofficial KernelSU fork adding an **optional, enabled-by-default**
 Compose theme layer. With the switch off, upstream appearance and behaviour are
 byte-identical. No authorisation code is touched.
 
@@ -21,7 +21,7 @@ byte-identical. No authorisation code is touched.
 manager/app/src/main/java/me/weishu/kernelsu/ui/theme/yuancore/
 ├── YuanCoreTokens.kt       色板 / Shapes / 字阶 / 动效常量（纯数据）
 ├── YuanCoreColorScheme.kt  只覆盖中性表面，语义色交给种子生成
-├── YuanCoreTheme.kt        LocalYuanCoreEnabled（默认 false）+ 字阶扩展
+├── YuanCoreTheme.kt        LocalYuanCoreEnabled（兜底 false）+ 字阶扩展
 ├── YuanCoreOrb.kt          同心圆 Canvas 动画
 └── YuanCoreHeroCard.kt     首页状态卡，不依赖任一套主题的 ColorScheme
 ```
@@ -29,6 +29,10 @@ manager/app/src/main/java/me/weishu/kernelsu/ui/theme/yuancore/
 开关链路：两套设置页 → `SettingsViewModel` → `SettingsRepository`（键
 `yuancore_theme`）→ `AppSettings` → `CompositionLocalProvider` → 主题与两个首页。
 Material 注入种子/表面/形状/字阶，Miuix 只注入种子（其表面系统自管）。
+
+**本分支默认开启主题**（`getBoolean("yuancore_theme", true)`），装上即呈现元核外观；
+到设置里关掉「元核主题」即刻回到官方外观。`MainActivityViewModel.observedKeys`
+包含该键，因此切换开关会即时重组界面，无需重启 App。
 
 **未改动**：`applicationId`、签名配置、launcher/splash、内核 `Kbuild` 变量、
 `Natives.kt`、JNI、`ksud`、`supercall`、`allowlist`、超级用户逻辑、模块安装、

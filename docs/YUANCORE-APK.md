@@ -78,8 +78,10 @@ dex 中可检索到 `yuanCoreEnabled`、`yuancore_theme`、`YuanCoreSpin`、`Yua
 
 ## 3. 主题开关
 
-YuanCore 是**可选主题层**，默认 OFF，关闭时界面与官方 `main` 完全一致。
-安装后在设置里打开 `YuanCore 主题`（键 `yuancore_theme`），会同时作用于 Material 与 Miuix 两套界面：
+YuanCore 是**可选主题层，本分支默认开启**，装上就能看到与官方不同的外观。
+设置里的 `元核主题 / YuanCore theme`（键 `yuancore_theme`）可以随时关掉，关闭时界面与官方
+`main` 完全一致；`MainActivityViewModel.observedKeys` 已包含该键，切换即时生效、无需重启。
+开启后同时作用于 Material 与 Miuix 两套界面：
 
 - `ColorScheme.yuanCore()`：玄青 / 宣白 双色板
 - `YuanCoreShapes`：22–28dp 圆角

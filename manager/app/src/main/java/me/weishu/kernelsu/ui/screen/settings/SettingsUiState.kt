@@ -15,7 +15,7 @@ data class SettingsUiState(
     val keyColor: Int = 0,
     val colorStyle: String = PaletteStyle.TonalSpot.name,
     val colorSpec: String = ColorSpec.SpecVersion.SPEC_2025.name,
-    val yuanCoreEnabled: Boolean = false,
+    val yuanCoreEnabled: Boolean = true,
     val enablePredictiveBack: Boolean = false,
     val enableSwipeDismiss: Boolean = true,
     val pagerInterceptionMode: Int = 1,
